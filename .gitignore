@@ -1,0 +1,21 @@
+config/.env
+config/.ENV
+Rag/Prompts/*.md
+# Node.js
+node_modules/
+package-lock.json
+# Logs
+*.log
+logs/
+# Sistema operacional
+.DS_Store
+Thumbs.db
+# Arquivos temporários
+tmp/
+temp/
+# Diretórios de build
+dist/
+build/
+config/.env
+Rag/Prompts/*.md
+config/.ENV

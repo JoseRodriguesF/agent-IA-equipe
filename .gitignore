@@ -1,7 +1,6 @@
 config/.env
 config/.ENV
-Rag/Prompts/*.md
-# Node.js
+
 node_modules/
 package-lock.json
 # Logs

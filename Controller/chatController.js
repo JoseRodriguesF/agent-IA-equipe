@@ -4,7 +4,7 @@ import db from "../config/database.js";
 
 const bdPrompt = fs.readFileSync("RAG/markdownBD.md", "utf-8");
 const backPrompt = fs.readFileSync("RAG/markdownBack.md", "utf-8");
-const resumoPrompt = fs.readFileSync("RAG/resumoPrompt.md", "utf-8");
+const resumoPrompt = fs.readFileSync("RAG/markdownResumir.md", "utf-8");
 
 let contexto = [];
 
@@ -37,9 +37,8 @@ export async function chat(message) {
       // Zera o contexto
       contexto = [];
 
-      return `Conversa encerrada. Resumo salvo no banco: ${JSON.stringify(resumo)}`;
+      return;
     }
-
     // Adiciona a mensagem do usuário ao contexto da conversa
     contexto.push({ role: "user", content: message });
 
@@ -93,7 +92,7 @@ export async function chat(message) {
         ...contexto,
         { role: "system", content: contextoExtra }
       ],
-      model: "gpt-5",
+      model: "gpt-4o-mini",
       temperature: 0.7
     });
 
@@ -126,18 +125,25 @@ async function resumirConversa(conversa) {
     ]
   });
 
-  const conteudo = respostaIA.choices[0]?.message?.content?.trim();
-  if (!conteudo) throw new Error("Resumo vazio");
+    let conteudo = respostaIA.choices[0]?.message?.content?.trim();
+    if (!conteudo) throw new Error("Resumo vazio");
 
-  let resultado;
-  try {
-    resultado = JSON.parse(conteudo);
-  } catch {
-    throw new Error("A IA não retornou JSON válido: " + conteudo);
-  }
+    // Remove blocos de código markdown, se existirem
+    if (conteudo.startsWith("```json")) {
+      conteudo = conteudo.replace(/^```json\s*([\s\S]*?)\s*```$/i, "$1").trim();
+    } else if (conteudo.startsWith("```")) {
+      conteudo = conteudo.replace(/^```\s*([\s\S]*?)\s*```$/i, "$1").trim();
+    }
+
+    let resultado;
+    try {
+      resultado = JSON.parse(conteudo);
+    } catch {
+      throw new Error("A IA não retornou JSON válido: " + conteudo);
+    }
 
   const [res] = await db.execute(
-    `INSERT INTO conversas_resumidas (resumo, tipo, status) VALUES (?, ?, ?)`,
+    `INSERT INTO conversas (resumo, tipo, status) VALUES (?, ?, ?)`,
     [resultado.resumo, resultado.tipo, resultado.status]
   );
 
@@ -179,7 +185,7 @@ async function buscarConversasSemelhantes(problema) {
 
   const [rows] = await db.execute(
     `SELECT c.id, c.resumo, c.tipo, c.status, v.embedding
-     FROM conversas_resumidas c
+     FROM conversas c
      JOIN conversas_vectores v ON c.id = v.conversa_id
      WHERE c.status = 'resolvido'`
   );

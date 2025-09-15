@@ -2,9 +2,10 @@ import openai from "../config/IAconfig.js";
 import fs from "fs";
 import db from "../config/database.js";
 
-const bdPrompt = fs.readFileSync("RAG/markdownBD.md", "utf-8");
-const backPrompt = fs.readFileSync("RAG/markdownBack.md", "utf-8");
-const resumoPrompt = fs.readFileSync("RAG/markdownResumir.md", "utf-8");
+const bdPrompt = fs.readFileSync("./RAG/markdownBD.md", "utf-8");
+const backPrompt = fs.readFileSync("./RAG/markdownBack.md", "utf-8");
+const frontWebPrompt = fs.readFileSync("./RAG/markdownFrontWeb.md", "utf-8");
+const resumoPrompt = fs.readFileSync("./RAG/markdownResumir.md", "utf-8");
 
 let contexto = [];
 
@@ -64,20 +65,25 @@ export async function chat(message) {
           Suas responsabilidades:
                         
           **Limitações e Redirecionamento:**  
-          - Seu único papel é ser uma assistente para os desenvolvedores da equipe. Se perguntarem sobre outros temas, redirecione a conversa educadamente para o foco do suporte emocional.
+          - Seu único papel é ser uma assistente para os desenvolvedores da equipe. Se perguntarem sobre outros temas, redirecione a conversa educadamente para ajudar na resolução de problemas.
           - Você não deve mandar nada que não seja sobre assistência, resolução de problemas, orientações relacionadas ao projeto em nível técnico ou para criação de conteúdo relacionado ao projeto.
-          - Você não ensina nada que não seja a sua função ou que não seja relacionado a suas outras orientações, suas orientações se limitam a Desenvolvimento BackEnd, Banco de dados, Programação FrontEnd, Orientações sobre o projeto, testes de eficiência e ajudas para QA ou relacionadas.                    
-          - Se o usuário perguntar se você pode machucá-lo ou causar dano a ele ou a outras pessoas, responda de maneira criativa e reconfortante, deixando claro que sua missão é apoiar e promover o bem-estar.  
+          - Você não ensina nada que não seja a sua função ou que não seja relacionado a suas outras orientações, suas orientações se limitam a Desenvolvimento BackEnd, Banco de dados, Programação FrontEnd, Orientações sobre o projeto, testes de eficiência e ajudas para QA ou relacionadas.  
           - Nunca forneça orientações sem fundamento ou sem sentido/vagas.  
           - Se te pedirem para fazer algo que não seja relacionado ao seu objetivo não faça.
 
           **O que você deve auxiliar o usuario:**
                   1. Desenvolvimento Back-End e Banco de Dados
                   - Auxiliar com dúvidas técnicas de back-end e banco de dados.
+                  - Auxiliar com duvidads técnicas de front-end web.
+                  - Fornecer exemplos de código, melhores práticas e soluções para problemas comuns.
+                  - Ajudar a depurar erros e otimizar consultas ou código.
                   - Explicar soluções de forma clara, concisa e técnica, sem respostas vagas.
                   - Você terá acesso aos seguintes prompts de apoio:
+
                     - Prompt de Banco de Dados: ${bdPrompt}
                     - Prompt de Back-End: ${backPrompt}
+                    - Prompt de Front-End Web: ${frontWebPrompt}
+
                   - Sempre quando te apresentado um erro de codigo utilize a base de dados para verificar onde pode estar o erro.
                                           
                   2. Testes Automatizados (QA)
@@ -191,7 +197,19 @@ async function buscarConversasSemelhantes(problema) {
   );
 
   const scored = rows.map(row => {
-    const emb = JSON.parse(row.embedding);
+    let emb;
+
+    try {
+      if (typeof row.embedding === "string") {
+        emb = JSON.parse(row.embedding); // se vier string JSON
+      } else {
+        emb = row.embedding; // se já for array (driver já converteu)
+      }
+    } catch (err) {
+      console.error("Erro ao processar embedding:", row.embedding, err);
+      emb = []; // fallback para não quebrar
+    }
+
     return {
       id: row.id,
       resumo: row.resumo,
